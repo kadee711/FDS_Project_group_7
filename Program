@@ -1,0 +1,117 @@
+from google.colab import files
+uploaded = files.upload()
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.model_selection import train_test_split
+
+# Upload CSV file 
+uploaded = files.upload()
+
+# Load dataset
+df = pd.read_csv("global_student_migration.csv")
+original_df = df.copy()
+
+print("\nFIRST 5 ROWS OF THE DATASET:")
+print(df.head())
+
+print("\n DATASET INFO:")
+df.info()
+
+print("\nMISSING VALUES PER COLUMN:")
+print(df.isnull().sum())
+
+#Handle Missing Data
+df['placement_country'] = df['placement_country'].fillna("None")
+df['placement_company'] = df['placement_company'].fillna("None")
+df['test_score'] = df['test_score'].replace(0.0, np.nan)
+df['test_score'] = df['test_score'].fillna(df['test_score'].mean())
+print("\nMISSING VALUES HANDLED.")
+
+#Encode Categorical Data
+df['scholarship_received'] = df['scholarship_received'].map({'Yes': 1, 'No': 0})
+df['placement_status'] = df['placement_status'].map({'Placed': 1, 'Not Placed': 0})
+
+label_cols = ['origin_country', 'destination_country', 'field_of_study',
+              'visa_status', 'post_graduation_visa', 'language_proficiency_test']
+
+le = LabelEncoder()
+for col in label_cols:
+    df[col] = le.fit_transform(df[col])
+
+print("\n DATA AFTER ENCODING:")
+print(df.head())
+
+#Feature Engineering
+df['duration'] = df['graduation_year'] - df['year_of_enrollment']
+print("\n FEATURE 'DURATION' ADDED.")
+
+#Feature Scaling
+scaler = StandardScaler()
+scale_cols = ['starting_salary_usd', 'gpa_or_score', 'test_score', 'duration']
+df[scale_cols] = scaler.fit_transform(df[scale_cols])
+
+print("\n DATA AFTER SCALING:")
+print(df[scale_cols].head())
+
+#Split the Dataset
+X = df.drop(columns=['placement_status', 'student_id'])
+y = df['placement_status']
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+print("\n DATASET SPLIT COMPLETE:")
+print("X_train shape:", X_train.shape)
+print("X_test shape:", X_test.shape)
+print("y_train shape:", y_train.shape)
+print("y_test shape:", y_test.shape)
+
+#Save Preprocessed Dataset
+finaldf = pd.concat([X, y], axis=1)
+finaldf.to_csv("Preprocessed_Global_Student_Data.csv", index=False)
+files.download("Preprocessed_Global_Student_Data.csv")
+print("\n PREPROCESSED DATA SAVED AS 'Preprocessed_Global_Student_Data.csv'")
+print("\n");
+
+#  Data Visualizations
+
+
+# 1. Histogram of GPA
+plt.figure(figsize=(6, 4))
+sns.histplot(df['gpa_or_score'], bins=30, kde=True)
+plt.title('Distribution of GPA (Scaled)')
+plt.xlabel('Scaled GPA')
+plt.ylabel('Frequency')
+plt.grid(True)
+plt.show()
+
+# 2. Count plot of Field of Study
+plt.figure(figsize=(10, 5))
+sns.countplot(x='field_of_study', data=df, order=df['field_of_study'].value_counts().index)
+plt.title('Field of Study Distribution')
+plt.xlabel('Field of Study')
+plt.ylabel('Number of Students')
+plt.xticks(rotation=45)
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+# 3. Correlation heatmap
+plt.figure(figsize=(10, 6))
+sns.heatmap(df.select_dtypes(include=['number']).corr(), annot=True, cmap='coolwarm', linewidths=0.5)
+plt.title('Correlation Heatmap')
+plt.tight_layout()
+plt.show()
+
+# 4. Bar chart for Visa Status
+plt.figure(figsize=(6, 4))
+sns.countplot(x='visa_status', data=df)
+plt.title('Visa Status Distribution')
+plt.xlabel('Visa Status')
+plt.ylabel('Number of Students')
+plt.grid(True)
+plt.show()
